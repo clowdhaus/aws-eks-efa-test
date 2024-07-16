@@ -57,6 +57,16 @@ module "eks" {
     desired_size = 1
 
     pre_bootstrap_user_data = <<-EOT
+        # RDMA perftest
+        yum install git libtool pciutils-devel -y && \
+          cd /opt && \
+          git clone https://github.com/linux-rdma/perftest.git && \
+          cd /opt/perftest && \
+          ./autogen.sh && \
+          ./configure && \
+          make && \
+          make install
+
         export KUBELET_EXTRA_ARGS='--node-labels=vpc.amazonaws.com/efa.present=true,nvidia.com/gpu.present=true \
           --register-with-taints=nvidia.com/gpu=true:NoSchedule'
 
@@ -75,7 +85,8 @@ module "eks" {
 
   self_managed_node_groups = {
     efa-1 = {
-      subnet_ids = [aws_subnet.lz["one"].id]
+      subnet_ids   = [aws_subnet.lz["one"].id]
+      desired_size = 2
     }
     efa-2 = {
       subnet_ids = [aws_subnet.lz["two"].id]
