@@ -18,10 +18,10 @@ ib_send_lat -x 0 -F --report_gbits -Q 1 -d rdmap0s31 -c SRD -n 1000  -a
 ib_send_lat -x 0 -F --report_gbits -Q 1 -d rdmap0s31 -c SRD -n 1000  -a <SERVER-IP>
 ```
 
-- When executing across different subnets (1 and 2 above), the client hangs and times out:
+- When executing between instances in different subnets (1 and 2 above), the client hangs and times out:
 
 ![alt text](fail-cross-subnet.png)
 
-- When executing across instances in the *same subnet (i.e. `efa-1` instance to another `efa-1` instance), it works as expected:
+- When executing between instances in the *same subnet (i.e. `efa-1` instance to another `efa-1` instance), it works as expected:
 
 ![alt text](success-same-subnet.png)
