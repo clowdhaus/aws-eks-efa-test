@@ -28,6 +28,26 @@ module "eks" {
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
 
+  node_security_group_enable_recommended_rules = false
+  node_security_group_additional_rules = {
+    all-vpc-ingress = {
+      description = "All VPC traffic"
+      from_port   = 0
+      to_port     = 0
+      protocol    = "-1"
+      cidr_blocks = [local.vpc_cidr]
+      type        = "ingress"
+    }
+    all-egress = {
+      description = "All traffic"
+      from_port   = 0
+      to_port     = 0
+      protocol    = "-1"
+      cidr_blocks = ["0.0.0.0/0"]
+      type        = "egress"
+    }
+  }
+
   eks_managed_node_group_defaults = {
     iam_role_additional_policies = {
       # Not required, but used in the example to access the nodes to inspect drivers and devices
@@ -57,6 +77,20 @@ module "eks" {
     desired_size = 1
 
     pre_bootstrap_user_data = <<-EOT
+        # Enable passwordless SSH
+        # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/efa-start.html#efa-start-passwordless
+        cat > ~/.ssh/config <<-EOF
+        Host *
+            ForwardAgent yes
+        Host *
+            StrictHostKeyChecking no
+        EOF
+
+        echo '${module.key_pair.private_key_openssh}' > ~/.ssh/id_rsa
+        echo '${module.key_pair.public_key_openssh}' > ~/.ssh/id_rsa.pub
+        cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+        chmod 600 ~/.ssh/*
+
         # RDMA perftest
         yum install git libtool pciutils-devel -y && \
           cd /opt && \
@@ -86,12 +120,27 @@ module "eks" {
   self_managed_node_groups = {
     efa-1 = {
       subnet_ids   = [aws_subnet.lz["one"].id]
+      max_size     = 2
       desired_size = 2
     }
     efa-2 = {
       subnet_ids = [aws_subnet.lz["two"].id]
     }
   }
+
+  tags = local.tags
+}
+
+################################################################################
+# SSH Key Pair
+################################################################################
+
+module "key_pair" {
+  source  = "terraform-aws-modules/key-pair/aws"
+  version = "~> 2.0"
+
+  key_name           = "deployer-one"
+  create_private_key = true
 
   tags = local.tags
 }
